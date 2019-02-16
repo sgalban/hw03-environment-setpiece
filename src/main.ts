@@ -10,8 +10,7 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
-  tesselations: 5,
-  'Load Scene': loadScene, // A function pointer, essentially
+    "Time Multiplier": 1.0
 };
 
 let square: Square;
@@ -47,6 +46,7 @@ function main() {
 
   // Add controls to the gui
   const gui = new DAT.GUI();
+  gui.add(controls, "Time Multiplier", -20.0, 20.0);
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -86,7 +86,7 @@ function main() {
     renderer.render(camera, flat, [
       square,
     ], time);
-    time++;
+    time += controls["Time Multiplier"];
     stats.end();
 
     // Tell the browser to call `tick` again whenever it renders a new frame
