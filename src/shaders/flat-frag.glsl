@@ -32,6 +32,7 @@ const int MATERIAL_LAMBERT = 0;
 const int MATERIAL_BLINNPHONG = 1;
 const int MATERIAL_GLOSSY = 2; // It's basically blinn-phong, with glossy reflections
 const int MATERIAL_REFRACTIVE = 3; // Transparent. Refracts whatever's behind it.
+const int MATERIAL_SAND = 4;
 
 const float AMBIENT_LIGHT = 0.15;
 const int LIGHT_DIRECTIONAL = 0;
@@ -163,6 +164,49 @@ bool withinBox(vec3 point, vec3 boxCenter, vec3 boxRadii) {
 }
 
 /* --------------------------------------------------------------------------*
+ *   Noise Functions
+ * --------------------------------------------------------------------------*/
+
+float brownianNoise3(vec3 pos, float frequency) {
+    vec3 noisePos = pos * frequency;
+    vec3 boxPos = floor(noisePos);
+
+    // Get the noise at the corners of the cells
+    float corner0 = random1(boxPos + vec3(0.0, 0.0, 0.0), SEED3);
+    float corner1 = random1(boxPos + vec3(1.0, 0.0, 0.0), SEED3);
+    float corner2 = random1(boxPos + vec3(0.0, 1.0, 0.0), SEED3);
+    float corner3 = random1(boxPos + vec3(1.0, 1.0, 0.0), SEED3);
+    float corner4 = random1(boxPos + vec3(0.0, 0.0, 1.0), SEED3);
+    float corner5 = random1(boxPos + vec3(1.0, 0.0, 1.0), SEED3);
+    float corner6 = random1(boxPos + vec3(0.0, 1.0, 1.0), SEED3);
+    float corner7 = random1(boxPos + vec3(1.0, 1.0, 1.0), SEED3);
+
+    // Get cubic interpolation factors
+    float tx = smoothstep(0.0, 1.0, fract(noisePos.x));
+    float ty = smoothstep(0.0, 1.0, fract(noisePos.y));
+    float tz = smoothstep(0.0, 1.0, fract(noisePos.z));
+
+    // Perform tricubic interpolation
+    return(
+        mix(
+            mix(mix(corner0, corner1, tx), mix(corner2, corner3, tx), ty),
+            mix(mix(corner4, corner5, tx), mix(corner6, corner7, tx), ty),
+            tz
+        )
+    );
+}
+
+float fbm3(vec3 pos, float startingFrequency, int numIterations) {
+    vec3 noisePos = pos * startingFrequency * 0.5;
+    float total = 0.0;
+    for (int i = 1; i <= numIterations; i++) {
+        float falloff = exp2(float(i));
+        total += brownianNoise3(noisePos, startingFrequency * falloff) / falloff;
+    }
+    return total / (1.0 - 1.0 / exp2(float(numIterations)));
+}
+
+ /* --------------------------------------------------------------------------*
  *   Bounding Box Computation
  * --------------------------------------------------------------------------*/
 
@@ -352,14 +396,10 @@ SDFData totalSdf(vec3 p, vec3 origin, vec3 rayDir, bool ignoreBoxes) {
 
     // --- Hourglass -----------------------
     Material glassMat = Material(MATERIAL_REFRACTIVE, vec3(0, 0.5, 0), 20.0, 1.0, 1.2, 1.0);
-    Material standMat = Material(MATERIAL_BLINNPHONG, vec3(0.3, 0.15, 0.02), 16.0, 0.1, 1.0, 1.0);
-    vec3 sandColor1 = vec3(0.9, 0.6, 0.4) + vec3(random1(floor(p * 100.0), SEED3) - 1.0) * 0.2;
-    Material sandMat1 = Material(MATERIAL_LAMBERT, sandColor1, 0.0, 0.0, 0.0, 0.0);
+    Material standMat = Material(MATERIAL_BLINNPHONG, vec3(0.6, 0.3, 0.04), 16.0, 0.1, 1.0, 1.0);
 
     float glass = FAR_CLIP * 2.0;
     float stand = FAR_CLIP * 2.0;
-    float topSand = FAR_CLIP * 2.0;
-    float bottomSand = FAR_CLIP * 2.0;
 
     if (intersectBoundingBox(origin, rayDir, vec3(0, 1.5, 0), vec3(2.65, 2.9, 2.65)) || ignoreBoxes) {
         float glassHull = unionSdf(
@@ -420,47 +460,44 @@ SDFData totalSdf(vec3 p, vec3 origin, vec3 rayDir, bool ignoreBoxes) {
 
         float totalTime = 100.0;
         float t = clamp(seconds / totalTime, 0.0, 1.0);
-        float bottomSandOffset = mix(-1.23, 0.0, sqrt(t));
-        float topSandoffset = mix(0.0, 0.90, t * t);
-        bottomSand = intersectSdf(
-            unionSdf(
-                sphereSdf(p, vec3(0, -1.3 + bottomSandOffset, 0), 2.0),
-                sphereSdf(p, vec3(0, 0.5 + bottomSandOffset, 0), 0.4),
-                0.3
-            ),
-            glassHull + 0.13,
-            0.1
-        );
-        topSand = intersectSdf(
-            subtractSdf(
-                sphereSdf(p, vec3(0, 3.25, 0.0), 1.8),
-                sphereSdf(p, vec3(0, 4.2 - topSandoffset, 0.0), 1.7),
-                0.3
-            ),
-            glassHull + 0.13,
-            0.1
-        );
+        
+        if (intersectBoundingBox(origin, rayDir, vec3(0, 0.25, 0), vec3(1.5, 0.75, 1.5))) {
+            float bottomSandOffset = mix(-1.23, 0.0, sqrt(t));
+            float bottomSand = intersectSdf(
+                unionSdf(
+                    sphereSdf(p, vec3(0, -1.3 + bottomSandOffset, 0), 2.0),
+                    sphereSdf(p, vec3(0, 0.5 + bottomSandOffset, 0), 0.4),
+                    0.3
+                ),
+                glassHull + 0.13,
+                0.1
+            );
+            //vec3 sandColor = vec3(0.85, 0.6, 0.4) + (vec3(fbm3(p, 6.0, 3) - 0.5)) * 0.15;
+            Material sandMat = Material(MATERIAL_SAND, vec3(0.85, 0.6, 0.4), 0.0, 0.0, 0.0, 0.0);
+            data = addSdf(data, bottomSand, sandMat);
+        }
 
-        vec3 sandColor2 = vec3(0.9, 0.6, 0.4) + vec3(random1(floor((p + vec3(0, 2.0 * topSandoffset, 0)) * 100.0), SEED3) - 1.0) * 0.2;
-        Material sandMat2 = Material(MATERIAL_LAMBERT, sandColor2, 0.0, 0.0, 0.0, 0.0);
+        if (intersectBoundingBox(origin, rayDir, vec3(0, 2.25, 0), vec3(1.5, 0.75, 1.5))) {
+            float topSandoffset = mix(0.0, 0.90, t * t);
+            float topSand = intersectSdf(
+                subtractSdf(
+                    sphereSdf(p, vec3(0, 3.25, 0.0), 1.8),
+                    sphereSdf(p, vec3(0, 4.2 - topSandoffset, 0.0), 1.7),
+                    0.3
+                ),
+                glassHull + 0.13,
+                0.1
+            );
+            //vec3 sandColor = vec3(0.85, 0.6, 0.4) + vec3(fbm3(p + vec3(0, 2.0 * topSandoffset, 0.0), 6.0, 3) - 0.5) * 0.15;
+            Material sandMat = Material(MATERIAL_SAND, vec3(0.85, 0.6, 0.4), 2.0 * topSandoffset, 0.0, 0.0, 0.0);
+            data = addSdf(data, topSand, sandMat);
+        }
 
         data = addSdf(data, stand, standMat);
-        data = addSdf(data, bottomSand, sandMat1);
-        data = addSdf(data, topSand, sandMat2);
         data = addSdf(data, glass, glassMat);
     }
 
-    /*
-    float sand =
-    blendSdf(
-        coneSdf(p, vec3(0, 0.8, 0), 0.00, 0.5, 0.5),
-        unionSdf(
-            coneSdf(p, vec3(0, 2, 0), 0.05, 1.0, 1.0) - 0.3,
-            sphereSdf(p, vec3(0, 2.5, 0), 0.3),
-            0.9
-        ),
-        smoothstep(0.0, 1.0, clamp(u_Time * 0.001, 0.0, 1.0))
-    );*/
+    // --- Table ---------------------------
 
     return data;
 }
@@ -555,6 +592,23 @@ vec3 calculateLambert(Surface surface) {
         if (light.type == 0) {
             float lambFactor = clamp(dot(light.direction * light.intensity, surface.normal), AMBIENT_LIGHT, light.intensity);
             lambertColor += lambFactor * mat.baseColor * light.color;
+        }
+    }
+
+    color = lambertColor;
+    return clamp(color, vec3(0), vec3(1));
+}
+
+vec3 calculateSand(Surface surface) {
+    Material mat = surface.material;
+    vec3 sandColor = mat.baseColor + (vec3(fbm3(surface.position + vec3(0, mat.shininess, 0), 6.0, 3) - 0.5)) * 0.15;
+    vec3 lambertColor = vec3(0);
+    vec3 color = vec3(0);
+    for (int i = 0; i < NUM_LIGHTS; i++) {
+        Light light = getLight(i);
+        if (light.type == 0) {
+            float lambFactor = clamp(dot(light.direction * light.intensity, surface.normal), AMBIENT_LIGHT, light.intensity);
+            lambertColor += lambFactor * sandColor * light.color;
         }
     }
 
@@ -667,7 +721,9 @@ vec3 calculateRefractive(Surface surface, vec3 cameraForward) {
         refractColor = mix(mat.baseColor, refractColor, survivingLight);
     }
     else {
-        refractColor = calculateColorRecursive(selfSurface, cameraForward);
+        float rayDepth = distance(offsetOrigin1, selfSurface.position);
+        float survivingLight = clamp(exp(-rayDepth * mat.attenuation * 0.2), 0.0, 1.0);
+        refractColor = mix(mat.baseColor, selfSurface.material.baseColor, survivingLight);
     }
 
     color = refractColor + bpColor;
@@ -716,7 +772,9 @@ vec3 calculateRefractiveRecursive(Surface surface, vec3 cameraForward) {
         refractColor = mix(mat.baseColor, refractColor, survivingLight);
     }
     else {
-        refractColor = calculateColorRecursive2(selfSurface, cameraForward);
+        float rayDepth = distance(offsetOrigin1, selfSurface.position);
+        float survivingLight = clamp(exp(-rayDepth * mat.attenuation * 0.2), 0.0, 1.0);
+        refractColor = mix(mat.baseColor, selfSurface.material.baseColor, survivingLight);
     }
 
     color = refractColor + bpColor;
@@ -730,6 +788,7 @@ vec3 calculateColor(Surface surface, vec3 cameraForward) {
         case MATERIAL_BLINNPHONG:  return calculateBlinnPhong(surface, cameraForward);
         case MATERIAL_GLOSSY:      return calculateGlossy(surface, cameraForward);
         case MATERIAL_REFRACTIVE:  return calculateRefractive(surface, cameraForward);
+        case MATERIAL_SAND:        return calculateSand(surface);
         default: return calculateBackground(surface, cameraForward);
     }
 }
@@ -742,6 +801,7 @@ vec3 calculateColorRecursive(Surface surface, vec3 cameraForward) {
         case MATERIAL_BLINNPHONG:  return calculateBlinnPhong(surface, cameraForward);
         case MATERIAL_GLOSSY:      return calculateBlinnPhong(surface, cameraForward);
         case MATERIAL_REFRACTIVE:  return calculateRefractiveRecursive(surface, cameraForward);
+        case MATERIAL_SAND:        return calculateSand(surface);
         default: return calculateBackground(surface, cameraForward);
     }
 }
@@ -753,6 +813,7 @@ vec3 calculateColorRecursive2(Surface surface, vec3 cameraForward) {
         case MATERIAL_BLINNPHONG:  return calculateBlinnPhong(surface, cameraForward);
         case MATERIAL_GLOSSY:      return calculateBlinnPhong(surface, cameraForward);
         case MATERIAL_REFRACTIVE:  return calculateBlinnPhong(surface, cameraForward);
+        case MATERIAL_SAND:        return calculateLambert(surface);
         default: return calculateBackground(surface, cameraForward);
     }
 }
