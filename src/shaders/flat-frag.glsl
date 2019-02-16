@@ -38,6 +38,7 @@ const int LIGHT_DIRECTIONAL = 0;
 const int LIGHT_POINT = 1;
 const int NUM_LIGHTS = 2;
 
+const vec3 SEED3 = vec3(0.31415, 0.6456, 0.23432);
 
 /* --------------------------------------------------------------------------*
  *   Structs
@@ -91,6 +92,11 @@ struct Light {
 /* --------------------------------------------------------------------------*
  *   Utility Functions
  * --------------------------------------------------------------------------*/
+
+float random1(vec3 p , vec3 seed) {
+    return fract(sin(dot(p + seed, vec3(987.654, 123.456, 531.975))) * 85734.3545);
+}
+
 
  Light getLight(int index) {
      index = clamp(index, 0, NUM_LIGHTS);
@@ -347,7 +353,8 @@ SDFData totalSdf(vec3 p, vec3 origin, vec3 rayDir, bool ignoreBoxes) {
     // --- Hourglass -----------------------
     Material glassMat = Material(MATERIAL_REFRACTIVE, vec3(0, 0.5, 0), 20.0, 1.0, 1.2, 1.0);
     Material standMat = Material(MATERIAL_BLINNPHONG, vec3(0.3, 0.15, 0.02), 16.0, 0.1, 1.0, 1.0);
-    Material sandMat = Material(MATERIAL_LAMBERT, vec3(0.9, 0.6, 0.4), 0.0, 0.0, 0.0, 0.0);
+    vec3 sandColor = vec3(0.9, 0.6, 0.4) + vec3(random1(floor(p * 100.0), SEED3) - 1.0) * 0.2;
+    Material sandMat = Material(MATERIAL_LAMBERT, sandColor, 0.0, 0.0, 0.0, 0.0);
 
     float glass = FAR_CLIP * 2.0;
     float stand = FAR_CLIP * 2.0;
