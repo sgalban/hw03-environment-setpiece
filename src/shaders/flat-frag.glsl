@@ -353,12 +353,14 @@ SDFData totalSdf(vec3 p, vec3 origin, vec3 rayDir, bool ignoreBoxes) {
     // --- Hourglass -----------------------
     Material glassMat = Material(MATERIAL_REFRACTIVE, vec3(0, 0.5, 0), 20.0, 1.0, 1.2, 1.0);
     Material standMat = Material(MATERIAL_BLINNPHONG, vec3(0.3, 0.15, 0.02), 16.0, 0.1, 1.0, 1.0);
-    vec3 sandColor = vec3(0.9, 0.6, 0.4) + vec3(random1(floor(p * 100.0), SEED3) - 1.0) * 0.2;
-    Material sandMat = Material(MATERIAL_LAMBERT, sandColor, 0.0, 0.0, 0.0, 0.0);
+    vec3 sandColor1 = vec3(0.9, 0.6, 0.4) + vec3(random1(floor(p * 100.0), SEED3) - 1.0) * 0.2;
+    Material sandMat1 = Material(MATERIAL_LAMBERT, sandColor1, 0.0, 0.0, 0.0, 0.0);
 
     float glass = FAR_CLIP * 2.0;
     float stand = FAR_CLIP * 2.0;
-    float sand = FAR_CLIP * 2.0;
+    float topSand = FAR_CLIP * 2.0;
+    float bottomSand = FAR_CLIP * 2.0;
+
     if (intersectBoundingBox(origin, rayDir, vec3(0, 1.5, 0), vec3(2.65, 2.9, 2.65)) || ignoreBoxes) {
         float glassHull = unionSdf(
             unionSdf(
@@ -420,25 +422,31 @@ SDFData totalSdf(vec3 p, vec3 origin, vec3 rayDir, bool ignoreBoxes) {
         float t = clamp(seconds / totalTime, 0.0, 1.0);
         float bottomSandOffset = mix(-1.23, 0.0, sqrt(t));
         float topSandoffset = mix(0.0, 0.90, t * t);
-        sand = intersectSdf(
+        bottomSand = intersectSdf(
             unionSdf(
-                unionSdf(
-                    sphereSdf(p, vec3(0, -1.3 + bottomSandOffset, 0), 2.0),
-                    sphereSdf(p, vec3(0, 0.5 + bottomSandOffset, 0), 0.4),
-                    0.3
-                ),
-                subtractSdf(
-                    sphereSdf(p, vec3(0, 3.25, 0.0), 1.8),
-                    sphereSdf(p, vec3(0, 4.2 - topSandoffset, 0.0), 1.7),
-                    0.3
-                )
+                sphereSdf(p, vec3(0, -1.3 + bottomSandOffset, 0), 2.0),
+                sphereSdf(p, vec3(0, 0.5 + bottomSandOffset, 0), 0.4),
+                0.3
+            ),
+            glassHull + 0.13,
+            0.1
+        );
+        topSand = intersectSdf(
+            subtractSdf(
+                sphereSdf(p, vec3(0, 3.25, 0.0), 1.8),
+                sphereSdf(p, vec3(0, 4.2 - topSandoffset, 0.0), 1.7),
+                0.3
             ),
             glassHull + 0.13,
             0.1
         );
 
+        vec3 sandColor2 = vec3(0.9, 0.6, 0.4) + vec3(random1(floor((p + vec3(0, 2.0 * topSandoffset, 0)) * 100.0), SEED3) - 1.0) * 0.2;
+        Material sandMat2 = Material(MATERIAL_LAMBERT, sandColor2, 0.0, 0.0, 0.0, 0.0);
+
         data = addSdf(data, stand, standMat);
-        data = addSdf(data, sand, sandMat);
+        data = addSdf(data, bottomSand, sandMat1);
+        data = addSdf(data, topSand, sandMat2);
         data = addSdf(data, glass, glassMat);
     }
 
