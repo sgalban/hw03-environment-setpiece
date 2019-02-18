@@ -1,83 +1,35 @@
 # CIS 566 Homework 3: Environment Setpiece
 
-## Objective
-- Apply your knowledge of noise functions, raymarching, SDFs, lighting,
-materials, and post-process effects to make a polished 3D setpiece for
-your demo reel.
+## Overview
+My raymarched scene features an hourglass, with animated sand, in the middle of a small interior space.
+The scene is composed of a variety of SDF primitives, combined through a several different methods,
+multiple different materials, and several directional lights. Note that the scene was developed and tested using Firefox 65.0 on MacOS 10.12.6., and was developed locally on my machine, not using ShaderToy.
 
-## Base Code
-We have provided the same base code as in homework 2, but __you may choose to
-complete this assignment in ShaderToy instead__. If you complete this in
-ShaderToy, you must create a ShaderToy account named after your PennKey,
-and upload `.txt` files to your Git repository containing the
-code used in your ShaderToy implementation, labeling the code if it is
-supposed to go in different ShaderToy buffers. __Failure to do so will result in
-a score of zero on this assignment.__
+## Structs
+In order to keep my code organized and robust, I introduced a large number of structs that could be used in a variety of situations. These include:
+  - SDFData, which is returned by the totalSdf function when raymarching or calculating normals. This contains the distance to the nearest geometry, as usual, but also includes material data (see below) that can be used to color the surface. When a ray gets close enough to geometry to render it, the returned SDFData contains the material data of the closest surface.
+  - Surface, which encapsulates the data relating to a point hit by the marched ray. Most importantly, this includes the position the ray hit the surface, the normal at that point, the direction of the ray that hit the surface, and the material of the surface (which is copied from the SDFData). Taken together, this information alone can be used to calculate the color of the fragment.
+  - Light, which contains all the data pertaining to a single light (direction, color, etc.) There is a field for the type of light, as I was considering including point lights as well as directional lights, but I was unable to implement this due to time constraints.
+  - Material, which contains all the shading data global to the surface (although certain materials are edited after raymarching to add variation across a single surface). Properties include material type (which are all described below), base color, shininess, reflexivity, ior, and attenuation. These properties only apply for certain material types.
 
-## Assignment Requirements
-- __(40 points)__ Render a 3D scene using ray marched SDFs.
-Your scene should be some sort of setpiece, e.g. a forest
-glade, a rustic bedroom, a spaceship cockpit, etc. The general aim for your aesthetic should be "realism" (within reason; we realize you have only just begun to work with SDFs and noise). Your render
-should incorporate the following techniques:
-  - Animation of the camera or environment elements
-  - Three different uses of noise (for color, shape, normal, glow, etc.)
-  - Remapping of a value [0, 1] to a set of colors
-  - Any of the toolbox functions we have discussed
-  - Approximated environmental lighting using three to four directional lights and ambient light
-  - SDF-based soft shadows as discussed in [IQ's article on penumbra shadows](http://iquilezles.org/www/articles/rmshadows/rmshadows.htm).
+## Geometry
+The geometry in the scene is composed of multiple different SDFs, many of which were present in the previous homework. These include spheres, ellipsoids, boxes, capsules, cones, cylinders, etc. As with the previous assignment, I implemented the union, intersection, and difference operators (which can optionally include a smoothing coefficient). I also implemented an inset operator to hollow out an SDF and give it a thickness. In particular;
+  - The hourglass was created using a large number of shapes and operations, too many to explain in detail. Basically, the glass was made with 2 cones, and spheres that were smooth-unioned, and them subtracted from boxes to make sure the ends were flat. It was then inset to make it hollow. The stand used several spheres, capsules, ellipsoids and toruses smoothed together, along with cylinders and cones for the bases. Some subtraction was used to add detail. The sand was simply made using smooth-unioned spheres, as wel as some smooth subtraction, and was then intersected with the hull of the glass to make sure it fits inside. The position of these spheres are animated to create the sand emptying from the top into the bottom.
+  - The tabletop is simply a box blended with a cylinder with similar dimensions, giving it a rounded appearance, but still with some sharp corners.
+  - The floor is simply a box with a small height.
 
-- __(30 points)__ You should also incorporate at least two of the following elements in your scene:
-  - Depth of field
-  - Ray-based specular reflection
-  - Rim lighting
-  - Approximated Fresnel reflectivity (more reflectivity at glancing angles)
-  - Color remapping
-  - Vignette
-  - SDF blending
-  - Distance fog
-  - A raymarched homogeneous medium
-
-- __(20 points)__ Technique mastery: You will be scored on how well you direct the procedural elements in your scene to create a coherent visual. The more natural or deliberate visual effects appear, the higher your score. In other words, if your scene looks like noise functions and SDFs haphazardly combined together, your score will be diminished.
-
-- __(10 points)__ Following the specifications listed
-[here](https://github.com/pjcozzi/Articles/blob/master/CIS565/GitHubRepo/README.md),
-create your own README.md, renaming the file you are presently reading to
-INSTRUCTIONS.md. Don't worry about discussing runtime optimization for this
-project. Make sure your README contains the following information:
-  - Your name and PennKey
-  - Citation of any external resources you found helpful when implementing this
-  assignment.
-  - A link to your live github.io demo (refer to the pinned Piazza post on
-    how to make a live demo through github.io)
-  - An explanation of the techniques you used to generate your planet features.
-  Please be as detailed as you can; not only will this help you explain your work
-  to recruiters, but it helps us understand your project when we grade it!
-
-## Useful Links
-- [IQ's Article on Lighting](http://iquilezles.org/www/articles/outdoorslighting/outdoorslighting.htm)
-
-
-## Submission
-Commit and push to Github, then submit a link to your commit on Canvas. Remember to make your own README!
-
-## Inspiration
-- [Snail](https://www.shadertoy.com/view/ld3Gz2)
-- [Journey Tribute](https://www.shadertoy.com/view/ldlcRf)
-- [Stormy Landscape](https://www.shadertoy.com/view/4ts3z2)
-- [Volcanic](https://www.shadertoy.com/view/XsX3RB)
-- [Elevated](https://www.shadertoy.com/view/MdX3Rr)
-- [Rainforest](https://www.shadertoy.com/view/4ttSWf)
-- [Canyon](https://www.shadertoy.com/view/MdBGzG)
-- [Ladybug](https://www.shadertoy.com/view/4tByz3)
-- [Woods](https://www.shadertoy.com/view/XsfGD4)
-- [Catacombs](https://www.shadertoy.com/view/lsf3zr)
-- [Greek Temple](https://www.shadertoy.com/view/ldScDh)
-- [Bridge](https://www.shadertoy.com/view/Mds3z2)
-- [Terrain Tubes](https://www.shadertoy.com/view/4sjXzG)
-
-## Extra Credit (20 points maximum)
-- __(5 - 20 pts)__ Do some research into more advanced shading techniques such
-as ambient occlusion, soft shadows, GGX materials, depth of field, volumetrics,
-etc. and implement one of them. The more complex your feature, the more points
-you'll earn.
-- __(? pts)__ Propose an extra feature of your own!
+## Materials
+The bulk of my time was spent working on the different materials in my scene, as there are quite a few of them of varying complexity:
+  - There is a simple lambert shader, however, it just calculates the flat color, as the shadow calculation is able to light it as needed, and using both the lambertion shader and the shadow made the objects appear much darker than neccessary. The sand uses a modified lambertian shader that colors the fragments using a high frequency FBM. The noise function of the top half of the sand moves downward to give the appearance that the sand is funneling down (this is easier to see if the time multiplier is increased)
+  - A simple blinn-phong shader adds the specular highlight to the lambertian color. This highlight is used repeatedly in most other shaders. This shader, along with all the other ones, use normals calculated from the total distance field gradient. The power used in the highlight is determined by the material's shininess.
+  - A glossy shader takes the blinn-phong color, an adds reflections to it. This is done by casting a separate ray after the initial raymarching, with an origin at the hit point, and a direction calculated by GLSL's built in reflect() function. This second ray hits another peice of geometry (or the background), calculates its color, and sets the color of the original surface to that one. However, GLSL doesn't allow for recursion, so I had to duplicate my color calculation function. However, every reflected surface is rendered with either a blinnphong or lambertian shader, as using more complex shaders within the reflection would be too expensive without adding too much to the scene. How reflective a surface is depends on the material's reflexivity value. If it's 1.0, the color is based entirely on the reflection (and the specular highlight). At 0.0, the material might as well be blinn-phong. At 0.5, the blinn phong and full reflective surface are linearly interpolated by the approximated fresnel coefficient (found via a simple dot product).
+  - The refractive shader was by far the most difficult shader to implement, and took many different steps: 
+    -After the initial raycast, another ray is cast, which has an origin at the hit point, and its direction is determined with GLSL's refract() function, using the material's index of refraction value (note that I originally didn't know that this method existed, so I manually calculated the refraction vector, which was a terrible experience that I would not recommend to anyone). At small angles, in certain situations, the implementation of refract() runs into imaginary numbers, so it returns the zero vector, creating rings of black in some surfaces. To rememedy this, I check if this happens, then I calculate the vector manually, clamping the negative radicand to 0. It's not perfect, but I determined that it's good enough for the purposes of this assignment.
+    - This cast ray should, except in certain edge cases, be traveling through the refractive object at this point, it stops when it hits the other side of the surface.
+    - Another ray is cast, also using the refract() function. Because it's leaving the medium, the ior is inversed during this computation. The resulting ray will then hit another surface, and the color of the fragment will be determined from there.
+      - Like the glossy shader, these "recursively" calculated colors are simplified to avoid even more complexity. However, as it is an integral part of my scene, I did implement another "recursive" refractive call. This allows you to see through both layers of the hourglass, both of which are refractive.
+    - I can easily calculate the distance the ray went through the refractive object by looking at where the first 2 rays hit. I use the inverse exponential of this distance (along with the material's attenuation value) to mix the refracted color with the base color. This gives the objects some sort of turbidity that increases realistically at certain angles. It is most easily seen at the edges of the hourglass, where the glass appears more green than anything else (as is true with actual glass).
+  - Some other shaders based on the previous ones were created to add procedural textures and perturb normals based on them. These include:
+    - The sand, which was decribed above
+    - The wood table. An FBM was stretched out along a single axis, and was then used to modify the color and normals of the fragments. The normal perturbence can be seen in the reflection if you look clostly.
+    - The wood floor. The different planks were calculated as offset cells. The seed of all the other noise and toolbox functions then use the corner of each plank to make them appear separate. First, a simple 1-dimensional sawtooth function is calculated. It's perturbed using some stretched FBM to give the planks a basic wood texture. Another higher frequency FBM is then stretched out and overlaid across the planks to add some grainy detail (similarly to the table). Note that this grain is also perturbed using the same perturbance used to warp the sawtooth. The output value is then used as an iterpolation in a cosine color pallette, and is used as a bump-map. Unlike the table though, the floor is just a blinn-phong.
