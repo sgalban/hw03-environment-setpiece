@@ -2,6 +2,8 @@
 
 ## Overview
 My raymarched scene features an hourglass, with animated sand, on a table in the middle of the shadow realm, or something like that. I didn't really use any external source for inspiration; I started by developing different shaders and the content of my scene evolved from that. I originally hoped to make a well-defined interior space with more detail, but the hourglass itself was so computationally heavy, and getting the different components to play well with each other was so time consuming that I settled for this. Furthermore, my fragment is 1000+ lines, and includes many large functions that are invoked many times. Making the scene larger or more complex would make the shader take too long to compile, to the point where my browsers would just terminate the compilation or crash WebGL (in fact, one of the biggest challenges was optimizing the code just so the entire hourglass could be rendered at once without causing a crash).
+The camera controls were not modified whatsoever from the base code. It can be moved around and rotated at will. Keep in mind that zooming in can make the scene take significantly longer to render, however.
+The passage of time can be sped up, slowed down, or even reversed. This effects the flow of the sand in the hour glass, as well as the movement of the background.
 The scene itself is composed of a variety of SDF primitives, combined through a several different methods,
 multiple different materials, and several directional lights. Note that the scene was developed and tested using Firefox 65.0 on MacOS 10.12.6., and was developed locally on my machine, not using ShaderToy.
 
