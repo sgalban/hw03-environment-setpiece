@@ -51,6 +51,7 @@ function main() {
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
   const gl = <WebGL2RenderingContext> canvas.getContext('webgl2');
+
   if (!gl) {
     alert('WebGL 2 not supported!');
   }
@@ -88,8 +89,8 @@ function main() {
     ], time);
     time += controls["Time Multiplier"];
     stats.end();
-
     // Tell the browser to call `tick` again whenever it renders a new frame
+
     requestAnimationFrame(tick);
   }
 
